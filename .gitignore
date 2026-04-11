@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.tmp
+.vscode/
+.idea/
+temp_*.jpg
+*.pth
+*.pt
+*.h5
+*.ckpt
+data/
+models/
