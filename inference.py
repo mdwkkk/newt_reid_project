@@ -1,5 +1,7 @@
+# запуск: python inference.py "путь фотографии" (например, python inference.py data/gallery/1/IMG_9301.jpg)
 import os
 import json
+import argparse
 import torch
 import pandas as pd
 from torchvision import transforms
@@ -93,30 +95,34 @@ class NewtMatchEngine:
 
 
 # ==========================================
-# ПРИМЕР ИСПОЛЬЗОВАНИЯ
+# ИНТЕРФЕЙС КОМАНДНОЙ СТРОКИ (CLI)
 # ==========================================
 if __name__ == "__main__":
-    # Инициализируем движок (потребуется пара секунд на загрузку базы)
-    print("Инициализация системы Re-ID...")
+    # Настраиваем парсер аргументов
+    parser = argparse.ArgumentParser(description="🦎 Система распознавания тритонов (Re-ID)")
+    parser.add_argument("image_path", type=str, help="Путь к сырой фотографии тритона")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.image_path):
+        print(f"❌ Ошибка: Файл '{args.image_path}' не найден!")
+        exit(1)
+
+    print("🚀 Инициализация системы Re-ID...")
+    # Загружаем движок (с оптимизированной загрузкой .pt файла)
     engine = NewtMatchEngine(
         model_weights_path='models/best_model.pth',
-        db_pt_path='data/vector_database.pt', # <-- ТЕПЕРЬ ПУТЬ К БИНАРНИКУ
+        db_pt_path='data/vector_database.pt', 
         threshold=0.75
     )
     
-    print("\n--- Тест 1: Готовое фото (is_raw=False) ---")
-    # Подставь сюда путь к любой картинке из твоего датасета
-    test_path_crop = "data/train_crops/76/IMG_9810__unwrapped.jpg" 
-    result_crop = engine.process_query(query_id="req_001", image_path=test_path_crop, is_raw=False)
-    print(result_crop)
-
-    print("\n--- Тест 2: Сырое фото с фоном (is_raw=True) ---")
-    # Подставь сюда путь к сырой картинке тритона в чашке Петри
-    test_path_raw = "data/gallery/1/IMG_9301.jpg"
-    # Создадим фиктивный файл для теста, если его нет
-    if not os.path.exists(test_path_raw):
-        os.makedirs(os.path.dirname(test_path_raw), exist_ok=True)
-        Image.new('RGB', (800, 600)).save(test_path_raw)
-        
-    result_raw = engine.process_query(query_id="req_002", image_path=test_path_raw, is_raw=True)
-    print(result_raw)
+    print(f"🔍 Анализ фотографии: {args.image_path}")
+    
+    # Всегда используем is_raw=True для реальных пользовательских данных
+    result_json = engine.process_query(
+        query_id=os.path.basename(args.image_path), 
+        image_path=args.image_path, 
+        is_raw=True
+    )
+    
+    print("\n📊 Результат распознавания:")
+    print(result_json)
