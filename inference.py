@@ -1,4 +1,4 @@
-# запуск: python inference.py "путь фотографии" (например, python inference.py data/gallery/1/IMG_9301.jpg)
+# запуск: python inference.py "путь сырой фотографии" (например, python inference.py data/gallery/1/IMG_9301.jpg)
 import os
 import json
 import argparse
