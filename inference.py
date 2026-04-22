@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+# запуск: python inference.py "путь сырой фотографии" (например, python inference.py data/gallery/1/IMG_9301.jpg)
+>>>>>>> fd727363a350fc1d2a0d2f8dcd11167eae7eb8bf
 import os
 import json
 import argparse
