@@ -1,6 +1,7 @@
 import torch
 import pandas as pd
 from torchvision import transforms
+import torch.nn.functional as F
 from PIL import Image
 import os
 
@@ -25,10 +26,14 @@ def build_offline_db(csv_path, model_weights, output_pt_path):
     # 3. Чтение данных
     df = pd.read_csv(csv_path)
     
+    # === БРОНЕБОЙНАЯ ОЧИСТКА ОТ ДУБЛИКАТОВ ===
+    # Оставляем только уникальные пути к файлам
+    df = df.drop_duplicates(subset=['image_path']) 
+    
     embeddings_list = []
     labels_list = []
     
-    print(f"📦 Обработка {len(df)} изображений...")
+    print(f"📦 Обработка {len(df)} уникальных изображений...")
     
     with torch.no_grad():
         for i, row in df.iterrows():
@@ -39,6 +44,9 @@ def build_offline_db(csv_path, model_weights, output_pt_path):
             tensor = transform(img).unsqueeze(0).to(device)
             embedding = model(tensor)
             
+            # Нормализация
+            embedding = F.normalize(embedding, p=2, dim=1)
+
             # Сохраняем вектор на CPU, чтобы не забить видеопамять (если есть GPU)
             embeddings_list.append(embedding.cpu()) 
             labels_list.append(row['label'])
@@ -52,8 +60,8 @@ def build_offline_db(csv_path, model_weights, output_pt_path):
     print(f"✅ База данных успешно скомпилирована и сохранена в {output_pt_path}!")
 
 if __name__ == "__main__":
-    CSV_PATH = 'data/train_unet.csv' # Наша выровненная база
+    CSV_PATH = 'data/train_unwrapped.csv' # Наша выровненная база
     MODEL_WEIGHTS = 'models/best_model.pth' # Наши актуальные веса
-    OUTPUT_PT = 'data/vector_database.pt' # Файл, который будет загружаться за 0.1 сек
+    OUTPUT_PT = 'data/vector_database.pt' # Файл, который будет загружаться за 0.1 секунду
     
     build_offline_db(CSV_PATH, MODEL_WEIGHTS, OUTPUT_PT)

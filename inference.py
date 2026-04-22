@@ -1,18 +1,17 @@
-# запуск: python inference.py "путь фотографии" (например, python inference.py data/gallery/1/IMG_9301.jpg)
 import os
 import json
 import argparse
 import torch
-import pandas as pd
+import torch.nn.functional as F
 from torchvision import transforms
-from PIL import Image
+from PIL import Image, ImageOps
 
 from src.model import NewtReIDModel
 from src.database import VectorDatabase
 from src.inference_utils import crop_belly
 
 class NewtMatchEngine:
-    def __init__(self, model_weights_path, db_pt_path, threshold=0.75):
+    def __init__(self, model_weights_path, db_pt_path, threshold=0.49):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.threshold = threshold
         
@@ -38,52 +37,81 @@ class NewtMatchEngine:
             raise FileNotFoundError(f"Файл БД {pt_path} не найден. Сначала запустите build_vector_db.py")
             
         data = torch.load(pt_path, map_location=self.device)
-        
-        # Загружаем векторы из архива напрямую в нашу VectorDatabase
         for emb, label in zip(data['embeddings'], data['labels']):
-            self.db.add(emb.to(self.device), [label])
+            # === ИСПРАВЛЕНИЕ ===
+            # Возвращаем вектору двумерность: превращаем (512,) обратно в (1, 512)
+            # чтобы VectorDatabase склеивал их в нормальную матрицу (479, 512)
+            emb_2d = emb.unsqueeze(0).to(self.device)
+            self.db.add(emb_2d, [label])
+    
+    def process_query(self, query_id, image_path, is_raw=True):
+        """Главный метод обработки: кроп -> извлечение (Bulletproof TTA) -> поиск"""
+        try:
+            if is_raw:
+                pil_image = crop_belly(image_path)
+                if pil_image is None:
+                    return self._generate_error(query_id, "Не удалось сегментировать тритона")
+            else:
+                pil_image = Image.open(image_path).convert('RGB')
 
-    def process_query(self, query_id, image_path, is_raw=False):
-        """
-        Основной метод пайплайна.
-        is_raw=True -> Сначала отправляем в YOLO для обрезки.
-        is_raw=False -> Картинка уже обрезана, сразу в ViT.
-        """
-        # --- ЭТАП 1: Подготовка изображения ---
-        if is_raw:
-            processed_img = crop_belly(image_path)
-            if processed_img is None:
-                return self._generate_error(query_id, "Ошибка сегментации изображения")
-        else:
-            processed_img = Image.open(image_path).convert('RGB')
+            # === БИОЛОГИЧЕСКИ ПРАВИЛЬНЫЙ TTA (2 ПОЛОЖЕНИЯ) ===
+            img_normal = pil_image
+            img_180 = pil_image.rotate(180) # Если алгоритм начал развертку с хвоста
 
-        # --- ЭТАП 2: Извлечение признаков (Embedding) ---
-        input_tensor = self.transform(processed_img).unsqueeze(0).to(self.device)
-        with torch.no_grad():
-            query_embedding = self.model(input_tensor)
+            # УБРАЛИ ImageOps.mirror, так как он создает "инопланетян" и вызывает галлюцинации модели
+            tta_images = [img_normal, img_180]
 
-        # --- ЭТАП 3: Поиск и логика принятия решения ---
-        # Ищем топ-20 кандидатов, как указано в ТЗ
-        matches = self.db.search(query_embedding, top_k=20) 
-        
-        if not matches:
-            return self._generate_error(query_id, "База данных пуста")
+            # Переводим в тензоры в один батч (размер батча = 2)
+            tensors = torch.stack([
+                self.transform(img) for img in tta_images
+            ]).to(self.device)
 
-        best_match = matches[0]
-        # Если сходство меньше порога (0.75), считаем особь новой
-        is_new = best_match['score'] < self.threshold
-        
-        # --- ЭТАП 4: Форматирование JSON-ответа ---
-        response = {
-            "query_id": query_id,
-            "top_k": [m['label'] for m in matches],
-            "scores": [round(m['score'], 4) for m in matches],
-            "best_match": None if is_new else best_match['label'],
-            "confidence": round(best_match['score'], 4),
-            "is_new": is_new
-        }
-        
-        return json.dumps(response, indent=4, ensure_ascii=False)
+            with torch.no_grad():
+                # Прогоняем 2 картинки
+                embeddings = self.model(tensors)
+                embeddings = F.normalize(embeddings, p=2, dim=1) # (2, 512)
+
+            best_overall_score = -1.0
+            best_top_k_results = []
+            best_img_idx = 0 
+
+            # Итерируемся только 2 раза
+            for i in range(2):
+                emb = embeddings[i].unsqueeze(0)
+                
+                results = self.db.search(emb, top_k=20) 
+                top1_score = float(results[0]['score'])
+                
+                if top1_score > best_overall_score:
+                    best_overall_score = top1_score
+                    best_top_k_results = results 
+                    best_img_idx = i 
+
+            # Сохраняем правильный DEBUG INPUT (либо оригинал, либо 180)
+            tta_images[best_img_idx].save(f"debug_input_{query_id}.jpg")
+
+            # Проверка порога (напоминаю, лучше поставить 0.49 в конструкторе)
+            is_new = bool(best_overall_score < self.threshold)
+
+            # Формируем красивый список из 20 конкурентов
+            top_matches_clean = [
+                {"label": res['label'], "score": round(float(res['score']), 4)} 
+                for res in best_top_k_results
+            ]
+
+            response = {
+                "query_id": query_id,
+                "top_20_candidates": top_matches_clean,
+                "best_match": str(best_top_k_results[0]['label']) if not is_new else None,
+                "confidence": round(best_overall_score, 4),
+                "is_new": is_new,
+            }
+            return json.dumps(response, indent=4, ensure_ascii=False)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return self._generate_error(query_id, str(e))
 
     def _generate_error(self, query_id, error_msg):
         """Формирование JSON при ошибке"""
@@ -98,7 +126,6 @@ class NewtMatchEngine:
 # ИНТЕРФЕЙС КОМАНДНОЙ СТРОКИ (CLI)
 # ==========================================
 if __name__ == "__main__":
-    # Настраиваем парсер аргументов
     parser = argparse.ArgumentParser(description="🦎 Система распознавания тритонов (Re-ID)")
     parser.add_argument("image_path", type=str, help="Путь к сырой фотографии тритона")
     args = parser.parse_args()
@@ -108,16 +135,14 @@ if __name__ == "__main__":
         exit(1)
 
     print("🚀 Инициализация системы Re-ID...")
-    # Загружаем движок (с оптимизированной загрузкой .pt файла)
     engine = NewtMatchEngine(
         model_weights_path='models/best_model.pth',
         db_pt_path='data/vector_database.pt', 
-        threshold=0.75
+        threshold=0.49
     )
     
     print(f"🔍 Анализ фотографии: {args.image_path}")
     
-    # Всегда используем is_raw=True для реальных пользовательских данных
     result_json = engine.process_query(
         query_id=os.path.basename(args.image_path), 
         image_path=args.image_path, 

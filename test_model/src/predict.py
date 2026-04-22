@@ -53,6 +53,65 @@ def remove_head_region(mask, image_shape):
     
     return mask_copy
 
+def unwrap_belly(image, contour, mask):
+    # Фильтры
+    masked_pre = cv2.bitwise_and(image, image, mask=mask)
+    image_smoothed = cv2.medianBlur(masked_pre, 5)
+
+    kernel_erode = np.ones((5, 5), np.uint8) 
+    mask_eroded = cv2.erode(mask, kernel_erode, iterations=1)
+    
+    contours_eroded, _ = cv2.findContours(mask_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours_eroded: return image 
+    cnt = max(contours_eroded, key=cv2.contourArea).squeeze()
+    if len(cnt.shape) < 2: return image
+        
+    step = max(1, len(cnt) // 200) 
+    sub_cnt = cnt[::step]
+    dists = np.linalg.norm(sub_cnt[:, None] - sub_cnt[None, :], axis=-1)
+    sub_idx1, sub_idx2 = np.unravel_index(np.argmax(dists), dists.shape)
+    idx1, idx2 = sub_idx1 * step, sub_idx2 * step
+    if idx1 > idx2: idx1, idx2 = idx2, idx1
+        
+    edge1 = cnt[idx1:idx2]
+    edge2 = np.concatenate((cnt[idx2:], cnt[:idx1]), axis=0)[::-1]
+
+    def curve_length(c):
+        if len(c) < 2: return 1
+        return np.sum(np.sqrt(np.sum(np.diff(c, axis=0)**2, axis=1)))
+
+    def resample_curve(c, N):
+        l = np.sqrt(np.sum(np.diff(c, axis=0)**2, axis=1))
+        l = np.insert(l, 0, 0)
+        cum = np.cumsum(l)
+        new_l = np.linspace(0, cum[-1], N)
+        new_x = np.interp(new_l, cum, c[:, 0])
+        new_y = np.interp(new_l, cum, c[:, 1])
+        return np.column_stack((new_x, new_y))
+
+    natural_length = int(max(curve_length(edge1), curve_length(edge2)))
+    if natural_length < 10: return image
+
+    edge1_resampled = resample_curve(edge1, natural_length)
+    edge2_resampled = resample_curve(edge2, natural_length)
+
+    # ПРОСТО БЕРЕМ ШИРИНУ, БЕЗ АНАТОМИЧЕСКИХ ПЕРЕВОРОТОВ
+    widths = np.linalg.norm(edge1_resampled - edge2_resampled, axis=1)
+    natural_width = int(np.mean(widths))
+    if natural_width < 10: return image
+
+    map_x = np.zeros((natural_length, natural_width), dtype=np.float32)
+    map_y = np.zeros((natural_length, natural_width), dtype=np.float32)
+
+    for i in range(natural_length):
+        map_x[i, :] = np.linspace(edge1_resampled[i][0], edge2_resampled[i][0], natural_width)
+        map_y[i, :] = np.linspace(edge1_resampled[i][1], edge2_resampled[i][1], natural_width)
+
+    unwrapped = cv2.remap(image_smoothed, map_x, map_y, interpolation=cv2.INTER_CUBIC)
+    unwrapped_final = cv2.bilateralFilter(unwrapped, 9, 75, 75)
+    
+    return cv2.resize(unwrapped_final, (512, 512), interpolation=cv2.INTER_LANCZOS4)
+
 # ═══════════════════════════════════════════════════════════════
 # ПРЕДСКАЗАНИЕ
 # ═══════════════════════════════════════════════════════════════
@@ -142,8 +201,8 @@ def predict(image_path, model_path='models/best_model.pth', device='cuda', thres
     
     x, y, w, h = cv2.boundingRect(largest_contour)
     
-    belly_roi = original[y:y+h, x:x+w]
-    stretched = cv2.resize(belly_roi, (512, 512), interpolation=cv2.INTER_LANCZOS4)
+    # Вызываем нашу новую функцию выпрямления
+    unwrapped_img = unwrap_belly(original, largest_contour, mask_final)
     
     overlay = original.copy()
     cv2.drawContours(overlay, [largest_contour], -1, (0, 255, 0), 3)
@@ -152,8 +211,7 @@ def predict(image_path, model_path='models/best_model.pth', device='cuda', thres
         'original': original,
         'mask': mask_final,
         'overlay': overlay,
-        'belly_roi': belly_roi,
-        'stretched': stretched,
+        'unwrapped': unwrapped_img, # <-- Добавили новый ключ с идеальной разверткой
         'bbox': (x, y, w, h),
         'dice_score': checkpoint.get('val_dice', 0)
     }
@@ -163,7 +221,7 @@ def save_results(results, output_dir='results'):
     cv2.imwrite(f'{output_dir}/original.png', results['original'])
     cv2.imwrite(f'{output_dir}/mask.png', results['mask'])
     cv2.imwrite(f'{output_dir}/overlay.png', results['overlay'])
-    cv2.imwrite(f'{output_dir}/stretched.png', results['stretched'])
+    cv2.imwrite(f'{output_dir}/unwrapped.png', results['unwrapped'])
     print(f"✅ Результаты сохранены в {output_dir}/")
 
 if __name__ == '__main__':
