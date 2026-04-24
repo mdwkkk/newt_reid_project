@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-# запуск: python inference.py "путь сырой фотографии" (например, python inference.py data/gallery/1/IMG_9301.jpg)
->>>>>>> fd727363a350fc1d2a0d2f8dcd11167eae7eb8bf
 import os
 import json
 import argparse
@@ -42,14 +38,15 @@ class NewtMatchEngine:
             
         data = torch.load(pt_path, map_location=self.device)
         for emb, label in zip(data['embeddings'], data['labels']):
-            # === ИСПРАВЛЕНИЕ ===
-            # Возвращаем вектору двумерность: превращаем (512,) обратно в (1, 512)
-            # чтобы VectorDatabase склеивал их в нормальную матрицу (479, 512)
-            emb_2d = emb.unsqueeze(0).to(self.device)
+            # === БРОНЕБОЙНАЯ ЗАЩИТА РАЗМЕРНОСТИ ===
+            # .view(-1) сплющивает любые скобки, делая чистый 1D вектор (512,)
+            # .unsqueeze(0) делает из него строгую 2D матрицу (1, 512)
+            emb_2d = emb.view(-1).unsqueeze(0).to(self.device)
+            
             self.db.add(emb_2d, [label])
     
     def process_query(self, query_id, image_path, is_raw=True):
-        """Главный метод обработки: кроп -> извлечение (Bulletproof TTA) -> поиск"""
+        """Главный метод обработки: кроп -> извлечение (Без TTA) -> поиск"""
         try:
             if is_raw:
                 pil_image = crop_belly(image_path)
@@ -58,55 +55,37 @@ class NewtMatchEngine:
             else:
                 pil_image = Image.open(image_path).convert('RGB')
 
-            # === БИОЛОГИЧЕСКИ ПРАВИЛЬНЫЙ TTA (2 ПОЛОЖЕНИЯ) ===
-            img_normal = pil_image
-            img_180 = pil_image.rotate(180) # Если алгоритм начал развертку с хвоста
+            # === ПРЯМОЙ ИНФЕРЕНС (Без TTA) ===
+            # predict.py уже аппаратно выровнял тритона головой вверх!
+            
+            # Сохраняем DEBUG INPUT, чтобы глазами видеть идеальную каноничную развертку
+            pil_image.save(f"debug_input_{query_id}.jpg")
 
-            # УБРАЛИ ImageOps.mirror, так как он создает "инопланетян" и вызывает галлюцинации модели
-            tta_images = [img_normal, img_180]
-
-            # Переводим в тензоры в один батч (размер батча = 2)
-            tensors = torch.stack([
-                self.transform(img) for img in tta_images
-            ]).to(self.device)
+            # Переводим в тензор (размер батча = 1)
+            tensor = self.transform(pil_image).unsqueeze(0).to(self.device)
 
             with torch.no_grad():
-                # Прогоняем 2 картинки
-                embeddings = self.model(tensors)
-                embeddings = F.normalize(embeddings, p=2, dim=1) # (2, 512)
+                # Прогоняем всего 1 картинку (Инференс стал в 2 раза быстрее!)
+                embedding = self.model(tensor)
+                embedding = F.normalize(embedding, p=2, dim=1) # (1, 512)
 
-            best_overall_score = -1.0
-            best_top_k_results = []
-            best_img_idx = 0 
-
-            # Итерируемся только 2 раза
-            for i in range(2):
-                emb = embeddings[i].unsqueeze(0)
-                
-                results = self.db.search(emb, top_k=20) 
-                top1_score = float(results[0]['score'])
-                
-                if top1_score > best_overall_score:
-                    best_overall_score = top1_score
-                    best_top_k_results = results 
-                    best_img_idx = i 
-
-            # Сохраняем правильный DEBUG INPUT (либо оригинал, либо 180)
-            tta_images[best_img_idx].save(f"debug_input_{query_id}.jpg")
-
-            # Проверка порога (напоминаю, лучше поставить 0.49 в конструкторе)
+            # Поиск в векторной базе (Берем Топ-20)
+            results = self.db.search(embedding, top_k=20) 
+            best_overall_score = float(results[0]['score'])
+            
+            # Проверка порога (например, 0.49)
             is_new = bool(best_overall_score < self.threshold)
 
             # Формируем красивый список из 20 конкурентов
             top_matches_clean = [
                 {"label": res['label'], "score": round(float(res['score']), 4)} 
-                for res in best_top_k_results
+                for res in results
             ]
 
             response = {
                 "query_id": query_id,
                 "top_20_candidates": top_matches_clean,
-                "best_match": str(best_top_k_results[0]['label']) if not is_new else None,
+                "best_match": str(results[0]['label']) if not is_new else None,
                 "confidence": round(best_overall_score, 4),
                 "is_new": is_new,
             }
