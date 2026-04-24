@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Re-ID тритонов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['ui-sans-serif', 'system-ui', 'sans-serif'] } } } }
+  </script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+  <div class="mx-auto max-w-5xl px-4 py-10">
+    <header class="mb-10 text-center">
+      <h1 class="text-2xl font-semibold tracking-tight text-white">Идентификация тритонов (Re-ID)</h1>
+      <p class="mt-2 text-sm text-slate-400">Загрузите фото, нажмите «Обработка» — сегментация и поиск по галерее</p>
+    </header>
+
+    <section class="mb-8 rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
+      <div class="flex flex-wrap items-end gap-4">
+        <div>
+          <label for="file" class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">Фотография</label>
+          <input id="file" type="file" accept="image/*" class="hidden" />
+          <button id="btnPick" type="button"
+            class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-500">
+            Загрузить фото
+          </button>
+        </div>
+        <div>
+          <button id="btnRun" type="button" disabled
+            class="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40">
+            Обработка
+          </button>
+        </div>
+        <div id="spinner" class="hidden items-center gap-2 text-slate-400" aria-live="polite" aria-busy="false">
+          <svg class="h-5 w-5 animate-spin text-sky-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span class="text-sm">Идёт обработка…</span>
+        </div>
+      </div>
+      <div class="mt-6">
+        <p class="mb-2 text-xs font-medium text-slate-500">Предпросмотр</p>
+        <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+          <img id="preview" alt="Предпросмотр" class="max-h-64 w-full object-contain" hidden />
+          <p id="previewEmpty" class="p-6 text-center text-sm text-slate-500">Изображение не выбрано</p>
+        </div>
+      </div>
+    </section>
+
+    <div id="alert" class="mb-6 hidden rounded-lg border border-rose-800 bg-rose-950/50 px-4 py-3 text-sm text-rose-200" role="alert"></div>
+
+    <section id="results" class="hidden space-y-8">
+      <div>
+        <h2 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">Развёрнутое изображение (каноникал)</h2>
+        <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+          <img id="unwrapped" alt="Результат сегментации" class="max-h-96 w-full object-contain" />
+        </div>
+        <p id="meta" class="mt-3 text-sm text-slate-400"></p>
+      </div>
+      <div>
+        <h2 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">Топ совпадений</h2>
+        <div class="overflow-x-auto rounded-2xl border border-slate-800">
+          <table class="w-full min-w-[480px] text-left text-sm">
+            <thead class="border-b border-slate-800 bg-slate-900/60 text-slate-400">
+              <tr>
+                <th class="p-3 font-medium">Фото из БД</th>
+                <th class="p-3 font-medium">ID</th>
+                <th class="p-3 font-medium">Схожесть (score)</th>
+              </tr>
+            </thead>
+            <tbody id="tbody" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const fileInput = $('file');
+      const btnPick = $('btnPick');
+      const btnRun = $('btnRun');
+      const preview = $('preview');
+      const previewEmpty = $('previewEmpty');
+      const spinner = $('spinner');
+      const results = $('results');
+      const alertEl = $('alert');
+      const unwrapped = $('unwrapped');
+      const meta = $('meta');
+      const tbody = $('tbody');
+
+      let fileObj = null;
+
+      function setSpinner(on) {
+        if (on) { spinner.classList.remove('hidden'); spinner.classList.add('flex'); spinner.setAttribute('aria-busy', 'true'); }
+        else { spinner.classList.add('hidden'); spinner.classList.remove('flex'); spinner.setAttribute('aria-busy', 'false'); }
+        btnRun.disabled = on || !fileObj;
+      }
+
+      function showError(msg) {
+        if (!msg) { alertEl.classList.add('hidden'); alertEl.textContent = ''; return; }
+        alertEl.textContent = msg;
+        alertEl.classList.remove('hidden');
+      }
+
+      btnPick.addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', () => {
+        const f = fileInput.files && fileInput.files[0];
+        fileObj = f || null;
+        btnRun.disabled = !fileObj;
+        showError('');
+        results.classList.add('hidden');
+        if (f) {
+          const r = new FileReader();
+          r.onload = () => {
+            preview.src = r.result;
+            preview.hidden = false;
+            previewEmpty.hidden = true;
+          };
+          r.readAsDataURL(f);
+        } else {
+          preview.removeAttribute('src');
+          preview.hidden = true;
+          previewEmpty.hidden = false;
+        }
+      });
+
+      btnRun.addEventListener('click', async () => {
+        if (!fileObj) return;
+        showError('');
+        results.classList.add('hidden');
+        setSpinner(true);
+
+        const fd = new FormData();
+        fd.append('file', fileObj, fileObj.name);
+
+        try {
+          const res = await fetch('/api/predict', { method: 'POST', body: fd });
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            const err = (data && data.error) || res.statusText || 'Ошибка запроса';
+            showError(err);
+            return;
+          }
+
+          if (data.unwrapped_base64) {
+            unwrapped.src = 'data:' + (data.unwrapped_mime || 'image/jpeg') + ';base64,' + data.unwrapped_base64;
+          } else {
+            unwrapped.removeAttribute('src');
+          }
+
+          const parts = [];
+          if (data.best_match != null) parts.push('Лучший match: ' + data.best_match);
+          if (data.confidence != null) parts.push('Уверенность: ' + data.confidence);
+          if (data.is_new === true) parts.push('Считается новым (ниже порога)');
+          if (data.is_new === false) parts.push('Есть близкое совпадение в галерее');
+          meta.textContent = parts.join(' · ') || '—';
+
+          tbody.replaceChildren();
+          const rows = data.top_20_candidates || [];
+          rows.forEach((row) => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-900/50';
+            const imgTd = document.createElement('td');
+            imgTd.className = 'p-3';
+            const img = document.createElement('img');
+            const src = (row.gallery_preview_path || '/api/gallery/' + row.id + '/preview');
+            img.src = src;
+            img.alt = 'ID ' + row.id;
+            img.className = 'h-20 w-40 rounded-lg border border-slate-800 object-contain';
+            img.loading = 'lazy';
+            imgTd.appendChild(img);
+            const idTd = document.createElement('td');
+            idTd.className = 'p-3 font-mono text-slate-200';
+            idTd.textContent = String(row.id);
+            const scTd = document.createElement('td');
+            scTd.className = 'p-3 text-slate-300';
+            scTd.textContent = String(row.score);
+            tr.appendChild(imgTd);
+            tr.appendChild(idTd);
+            tr.appendChild(scTd);
+            tbody.appendChild(tr);
+          });
+
+          results.classList.remove('hidden');
+        } catch (e) {
+          showError(e && e.message ? e.message : 'Сеть или сервер недоступен');
+        } finally {
+          setSpinner(false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
