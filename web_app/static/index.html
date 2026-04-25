@@ -42,9 +42,9 @@
       </div>
       <div class="mt-6">
         <p class="mb-2 text-xs font-medium text-slate-500">Предпросмотр</p>
-        <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-          <img id="preview" alt="Предпросмотр" class="max-h-64 w-full object-contain" hidden />
-          <p id="previewEmpty" class="p-6 text-center text-sm text-slate-500">Изображение не выбрано</p>
+        <div class="flex min-h-[22rem] items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <img id="preview" alt="Предпросмотр" class="max-h-[70vh] max-w-full rounded-lg object-contain" hidden />
+          <p id="previewEmpty" class="text-center text-sm text-slate-500">Изображение не выбрано</p>
         </div>
       </div>
     </section>
@@ -77,6 +77,32 @@
     </section>
   </div>
 
+  <div id="compareModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 p-4 sm:p-8" role="dialog" aria-modal="true" aria-labelledby="compareTitle">
+    <button id="compareClose" type="button"
+      class="absolute left-4 top-4 rounded-lg border border-slate-700 bg-slate-900/90 p-2 text-slate-200 transition hover:bg-slate-800"
+      aria-label="Закрыть сравнение">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
+    <div class="mx-auto flex h-full w-full max-w-6xl items-center justify-center">
+      <div class="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+        <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <h3 id="compareTitle" class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Загруженное фото (unwrapped)</h3>
+          <div class="flex min-h-[50vh] items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-3">
+            <img id="compareQueryImg" alt="Загруженное фото" class="max-h-[75vh] max-w-full object-contain" />
+          </div>
+        </article>
+        <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <h3 id="compareGalleryTitle" class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Фото из базы</h3>
+          <div class="flex min-h-[50vh] items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-3">
+            <img id="compareGalleryImg" alt="Фото из базы" class="max-h-[75vh] max-w-full object-contain" />
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       const $ = (id) => document.getElementById(id);
@@ -91,6 +117,11 @@
       const unwrapped = $('unwrapped');
       const meta = $('meta');
       const tbody = $('tbody');
+      const compareModal = $('compareModal');
+      const compareClose = $('compareClose');
+      const compareQueryImg = $('compareQueryImg');
+      const compareGalleryImg = $('compareGalleryImg');
+      const compareGalleryTitle = $('compareGalleryTitle');
 
       let fileObj = null;
 
@@ -106,7 +137,31 @@
         alertEl.classList.remove('hidden');
       }
 
+      function closeCompareModal() {
+        compareModal.classList.add('hidden');
+        compareQueryImg.removeAttribute('src');
+        compareGalleryImg.removeAttribute('src');
+      }
+
+      function openCompareModal(gallerySrc, galleryId) {
+        if (!unwrapped.src) {
+          showError('Нет unwrapped-изображения для сравнения');
+          return;
+        }
+        compareQueryImg.src = unwrapped.src;
+        compareGalleryImg.src = gallerySrc;
+        compareGalleryTitle.textContent = 'Фото из базы · ID ' + galleryId;
+        compareModal.classList.remove('hidden');
+      }
+
       btnPick.addEventListener('click', () => fileInput.click());
+      compareClose.addEventListener('click', closeCompareModal);
+      compareModal.addEventListener('click', (e) => {
+        if (e.target === compareModal) closeCompareModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !compareModal.classList.contains('hidden')) closeCompareModal();
+      });
 
       fileInput.addEventListener('change', () => {
         const f = fileInput.files && fileInput.files[0];
@@ -168,13 +223,26 @@
             tr.className = 'hover:bg-slate-900/50';
             const imgTd = document.createElement('td');
             imgTd.className = 'p-3';
+
+            const wrap = document.createElement('div');
+            wrap.className = 'group relative inline-flex';
             const img = document.createElement('img');
             const src = (row.gallery_preview_path || '/api/gallery/' + row.id + '/preview');
             img.src = src;
             img.alt = 'ID ' + row.id;
             img.className = 'h-20 w-40 rounded-lg border border-slate-800 object-contain';
             img.loading = 'lazy';
-            imgTd.appendChild(img);
+
+            const zoomBtn = document.createElement('button');
+            zoomBtn.type = 'button';
+            zoomBtn.className = 'absolute inset-0 flex items-center justify-center rounded-lg bg-slate-950/60 opacity-0 transition group-hover:opacity-100 focus:opacity-100';
+            zoomBtn.setAttribute('aria-label', 'Сравнить с загруженным фото');
+            zoomBtn.innerHTML = '<svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"></circle><path d="M16 16l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>';
+            zoomBtn.addEventListener('click', () => openCompareModal(src, row.id));
+
+            wrap.appendChild(img);
+            wrap.appendChild(zoomBtn);
+            imgTd.appendChild(wrap);
             const idTd = document.createElement('td');
             idTd.className = 'p-3 font-mono text-slate-200';
             idTd.textContent = String(row.id);
