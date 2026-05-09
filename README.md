@@ -44,6 +44,5 @@
 git clone <url-вашего-репозитория>
 cd newt1_reid_project
 
-**2. Установка зависимостей**
-```bash
-pip install -r requirements.txt
+ХУЙ
+
