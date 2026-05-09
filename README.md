@@ -44,5 +44,3 @@
 git clone <url-вашего-репозитория>
 cd newt1_reid_project
 
-ХУЙ
-
