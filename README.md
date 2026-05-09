@@ -49,6 +49,7 @@ cd newt1_reid_project
 ```bash
 pip install -r requirements.txt
 ```
+**Примечание:** В проекте также используется Git Large File Storage (LFS)
 
 **3. Модели и веса**
 Для работы системы необходимо загрузить веса моделей: https://drive.google.com/drive/folders/1dLLGGPGHIaPuN4iLunmSy20WT0Ev13D2
