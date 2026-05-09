@@ -41,7 +41,7 @@
 
 **1. Клонирование репозитория**
 ```bash
-git clone <url-вашего-репозитория>
+git clone https://github.com/mdwkkk/newt_reid_project.git
 cd newt1_reid_project
 ```
 
