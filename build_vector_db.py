@@ -12,16 +12,18 @@ def build_offline_db(csv_path, model_weights, output_pt_path):
     print(f"🚀 Инициализация индексации на {device}...")
 
     # 1. Загрузка модели
-    model = NewtReIDModel(pretrained=False).to(device)
+    model = NewtReIDModel(pretrained=False, img_size=256).to(device)
     model.load_state_dict(torch.load(model_weights, map_location=device))
     model.eval()
 
     # 2. Трансформации
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+            # Было: transforms.Resize((224, 224)),
+            # СТАЛО:
+            transforms.Resize((256, 256)), 
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
 
     # 3. Чтение данных
     df = pd.read_csv(csv_path)

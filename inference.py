@@ -16,13 +16,15 @@ class NewtMatchEngine:
         self.threshold = threshold
         
         # 1. Загрузка модели
-        self.model = NewtReIDModel(pretrained=False).to(self.device)
+        self.model = NewtReIDModel(pretrained=False, img_size=256).to(self.device)
         self.model.load_state_dict(torch.load(model_weights_path, map_location=self.device))
         self.model.eval()
         
         # 2. Настройка трансформаций (без аугментаций)
         self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
+            # Было: transforms.Resize((224, 224)),
+            # СТАЛО:
+            transforms.Resize((256, 256)), 
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])

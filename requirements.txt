@@ -52,3 +52,4 @@ labelme>=5.4.0
 segmentation_models_pytorch
 
 seaborn>=0.13.2
+mlflow>=3.11.1
