@@ -51,8 +51,7 @@ pip install -r requirements.txt
 ```
 
 **3. Модели и веса**
-Для работы системы необходимо загрузить веса моделей (ссылка на Google Диск ниже):
-[👉 Ссылка на модели и датасет](вставьте_ссылку_здесь)
+Для работы системы необходимо загрузить веса моделей: https://drive.google.com/drive/folders/1dLLGGPGHIaPuN4iLunmSy20WT0Ev13D2
 
 * **Model 1 (Re-ID):** Содержимое папки `models/` поместите в корень проекта.
 * **Model 2 (Segmentation):** Содержимое папки поместите в `test_model/models/`.
