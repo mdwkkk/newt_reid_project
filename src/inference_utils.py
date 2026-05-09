@@ -45,8 +45,5 @@ def crop_belly(raw_image_path):
         print(f"⚠️ Ошибка сегментации: {e}")
         import traceback
         traceback.print_exc()
-<<<<<<< HEAD
         return None
-=======
-        return None
->>>>>>> 42df82769ba38241f1aa129fb40bc2a7e53a5406
+
