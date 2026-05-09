@@ -64,7 +64,7 @@ pip install -r requirements.txt
 ### Распознавание (Inference)
 Для анализа фотографии и поиска тритона в базе данных запустите:
 ```bash
-python inference.py data/gallery/1/IMG_9301.JPG
+python inference.py <путь изображения> (Например, data/gallery/1/IMG_9301.JPG)
 ```
 **Результат:** Вы получите JSON-ответ с ID лучшего совпадения, уверенностью (confidence) и списком Топ-20 кандидатов.
 
