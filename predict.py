@@ -62,3 +62,32 @@ def find_head_tail_points(contour, mask):
         head_idx, tail_idx = np.argmax(projections), np.argmin(projections)
         
     return tuple(points[head_idx].astype(int)), tuple(points[tail_idx].astype(int))
+
+def align_to_vertical(image, mask, contour, head_point, tail_point):
+    h, w = image.shape[:2]
+    dx = tail_point[0] - head_point[0]
+    dy = tail_point[1] - head_point[1]
+    
+    current_angle = math.degrees(math.atan2(dy, dx))
+    rotate_angle = current_angle - 90.0
+    
+    center = (w / 2.0, h / 2.0)
+    M = cv2.getRotationMatrix2D(center, rotate_angle, 1.0)
+    
+    cos, sin = np.abs(M[0, 0]), np.abs(M[0, 1])
+    new_w = int(np.ceil((h * sin) + (w * cos)))
+    new_h = int(np.ceil((h * cos) + (w * sin)))
+    
+    M[0, 2] += (new_w / 2.0) - center[0]
+    M[1, 2] += (new_h / 2.0) - center[1]
+    
+    rotated_img = cv2.warpAffine(image, M, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0))
+    rotated_mask = cv2.warpAffine(mask, M, (new_w, new_h), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    
+    contour_float = contour.astype(np.float32)
+    rotated_contour = cv2.transform(contour_float, M).astype(np.int32)
+    
+    new_head = cv2.transform(np.array([[head_point]], dtype=np.float32), M)[0][0].astype(int)
+    new_tail = cv2.transform(np.array([[tail_point]], dtype=np.float32), M)[0][0].astype(int)
+    
+    return rotated_img, rotated_mask, rotated_contour, tuple(new_head), tuple(new_tail)
