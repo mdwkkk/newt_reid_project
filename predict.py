@@ -91,3 +91,15 @@ def align_to_vertical(image, mask, contour, head_point, tail_point):
     new_tail = cv2.transform(np.array([[tail_point]], dtype=np.float32), M)[0][0].astype(int)
     
     return rotated_img, rotated_mask, rotated_contour, tuple(new_head), tuple(new_tail)
+
+def remove_head_region(mask, image_shape):
+    h, w = image_shape[:2]
+    mask_copy = mask.copy()
+    contours, _ = cv2.findContours(mask_copy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours: return mask_copy
+    largest = max(contours, key=cv2.contourArea)
+    x, y, wb, hb = cv2.boundingRect(largest)
+    cut_height = int(hb * HEAD_CUT_RATIO)
+    if hb > 100:
+        mask_copy[y:y+cut_height, x:x+wb] = 0
+    return mask_copy
