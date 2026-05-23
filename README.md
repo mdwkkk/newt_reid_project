@@ -54,7 +54,7 @@ pip install -r requirements.txt
 **3. Модели и веса**
 Для работы системы необходимо загрузить веса моделей: https://drive.google.com/drive/folders/1dLLGGPGHIaPuN4iLunmSy20WT0Ev13D2
 
-* **Model 1 (Re-ID):** Папки `models/` и `data/` поместить в корень проекта. (Актуальная best_model.pth от 23.05.26)
+* **Model 1 (Re-ID):** Папки `models/` и `data/` поместить в корень проекта. (Актуальная best_model.pth и vector_database.pt от 23.05.26)
 * **Model 2 (Segmentation):** Папки `models/` и `data/` поместить в `test_model/`. (Актуальная best_model.pth от 02.04.26)
 
 ---
