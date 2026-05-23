@@ -21,7 +21,7 @@ def train():
         "learning_rate_head": 1e-3,
         "learning_rate_backbone": 1e-5,
         "batch_size": 64,
-        "epochs": 50,
+        "epochs": 100,
         "triplet_margin": 0.3,
         "image_size": 256,
         "optimizer": "AdamW",
@@ -31,7 +31,7 @@ def train():
     # === MLFLOW ШАГ 3: НАСТРАИВАЕМ ПРОЕКТ И ЗАПУСКАЕМ ТРЕКИНГ ===
     mlflow.set_experiment("Newt_ReID_Optimization") # Название проекта
     
-    with mlflow.start_run(run_name="ViT_Res256_50_Epochs"): # Имя конкретного запуска
+    with mlflow.start_run(run_name="ViT_Res256_100_Epochs"): # Имя конкретного запуска
         
         # Логируем параметры в интерфейс MLflow
         mlflow.log_params(hyperparams)
