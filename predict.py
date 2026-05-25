@@ -103,3 +103,17 @@ def remove_head_region(mask, image_shape):
     if hb > 100:
         mask_copy[y:y+cut_height, x:x+wb] = 0
     return mask_copy
+
+def extract_belly_exact(image, mask, contour):
+    x, y, bw, bh = cv2.boundingRect(contour)
+    belly_roi = image[y:y+bh, x:x+bw].copy()
+    mask_roi = mask[y:y+bh, x:x+bw].copy()
+    contour_shifted = contour - np.array([[x, y]])
+    belly_rgba = cv2.cvtColor(belly_roi, cv2.COLOR_BGR2BGRA)
+    alpha = np.zeros_like(mask_roi)
+    cv2.drawContours(alpha, [contour_shifted], -1, 255, -1)
+    belly_rgba[:, :, 3] = alpha
+    return belly_rgba, (x, y, bw, bh), contour_shifted
+
+def ensure_vertical_orientation(belly_rgba):
+    return belly_rgba
