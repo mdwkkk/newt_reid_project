@@ -117,3 +117,34 @@ def extract_belly_exact(image, mask, contour):
 
 def ensure_vertical_orientation(belly_rgba):
     return belly_rgba
+
+def canonicalize_belly(belly_rgba, target_size=(256, 256)):
+    h, w = belly_rgba.shape[:2]
+    tw, th = target_size
+    alpha = belly_rgba[:, :, 3]
+    center_x, width_at_y = [], []
+    for y in range(h):
+        row = alpha[y, :]
+        indices = np.where(row > 0)[0]
+        if len(indices) > 0:
+            center_x.append(np.mean(indices))
+            width_at_y.append(indices[-1] - indices[0] + 1)
+        else:
+            center_x.append(w / 2)
+            width_at_y.append(0)
+    center_x, width_at_y = np.array(center_x), np.array(width_at_y)
+    
+    canonical = np.zeros((th, tw, 4), dtype=np.uint8)
+    for ty in range(th):
+        sy = min(int((ty / th) * h), h - 1)
+        if width_at_y[sy] > 0:
+            cx, sw = center_x[sy], width_at_y[sy]
+            if sw > 0:
+                scale = tw / sw
+                for tx in range(tw):
+                    sx = max(0, min(int(cx - (tw / 2 - tx) / scale), w - 1))
+                    if alpha[sy, sx] > 0:
+                        canonical[ty, tx] = belly_rgba[sy, sx]
+                    else:
+                        canonical[ty, tx, 3] = 0
+    return canonical
