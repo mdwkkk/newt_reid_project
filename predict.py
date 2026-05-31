@@ -148,3 +148,32 @@ def canonicalize_belly(belly_rgba, target_size=(256, 256)):
                     else:
                         canonical[ty, tx, 3] = 0
     return canonical
+
+from model import create_model
+
+def predict(image_path, model_path='models/best_model.pth', device='cuda'):
+    model = create_model(arch='unet', encoder='efficientnet-b3', pretrained=False)
+    checkpoint = torch.load(model_path, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(device)
+    model.eval()
+    
+    image = cv2.imread(image_path)
+    if image is None: return None
+    original = image.copy()
+    h_orig, w_orig = image.shape[:2]
+    
+    image_resized = cv2.resize(image, (512, 512), interpolation=cv2.INTER_LINEAR)
+    image_tensor = torch.from_numpy(np.transpose(image_resized.astype(np.float32)/255.0, (2,0,1))).unsqueeze(0).to(device)
+    
+    with torch.no_grad():
+        mask = torch.sigmoid(model(image_tensor)).squeeze().cpu().numpy()
+        
+    mask = (mask > THRESHOLD).astype(np.uint8) * 255
+    kernel = np.ones((MORPH_KERNEL, MORPH_KERNEL), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+    mask_resized = cv2.resize(mask, (w_orig, h_orig), interpolation=cv2.INTER_NEAREST)
+    
+    mask_final, contour = keep_largest_contour(mask_resized)
+    return {'original': original, 'mask': mask_final, 'contour': contour}
