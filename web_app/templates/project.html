@@ -16,6 +16,13 @@
       <span class="badge badge-accent">{{ project.individual_count }} особей</span>
     </div>
   </div>
+  <button
+    id="btnDeleteProject"
+    type="button"
+    class="btn btn-danger"
+    data-project-id="{{ project.id }}"
+    data-project-name="{{ project.name }}"
+  >Удалить проект</button>
 </header>
 
 <div class="action-grid">
@@ -38,4 +45,52 @@
     <span class="action-card-arrow">{{ icon('chevron-right', 'icon') }}</span>
   </a>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var btn = document.getElementById('btnDeleteProject');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var id = btn.getAttribute('data-project-id');
+    var name = btn.getAttribute('data-project-name') || id;
+    if (!id) return;
+    if (
+      !confirm(
+        'Удалить проект «' + name + '»? Все особи, фотографии и база поиска будут удалены безвозвратно.'
+      )
+    ) {
+      return;
+    }
+    btn.disabled = true;
+    fetch('/api/projects/' + encodeURIComponent(id), { method: 'DELETE' })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().then(function (body) {
+            var msg =
+              body && typeof body.detail === 'string'
+                ? body.detail
+                : 'Не удалось удалить проект';
+            throw new Error(msg);
+          }).catch(function () {
+            throw new Error('Не удалось удалить проект');
+          });
+        }
+        window.location.href = '/';
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        var toast = document.getElementById('toast');
+        if (toast) {
+          toast.textContent = err.message || 'Ошибка удаления';
+          toast.className = 'toast is-error';
+          toast.classList.remove('hidden');
+          setTimeout(function () { toast.classList.add('hidden'); }, 4000);
+        } else {
+          alert(err.message || 'Ошибка удаления');
+        }
+      });
+  });
+})();
+</script>
 {% endblock %}
