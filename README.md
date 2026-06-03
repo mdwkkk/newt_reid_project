@@ -59,7 +59,8 @@ pip install -r requirements.txt
 
 **4. Работа с проектами**
 Для работы с проектами необходимо добавить базу данных: https://drive.google.com/drive/folders/1LXJdBYZkoEMLGCth_p9ufgCiHTQjMEbz?usp=sharing
-Для этого содержимое папки поместить в data/
+
+Для этого содержимое папки поместить в `data/`
 
 ---
 
