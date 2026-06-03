@@ -17,7 +17,6 @@
     })();
   </script>
   <link rel="stylesheet" href="/static/css/app.css" />
-  <script src="/static/js/app.js" defer></script>
   {% block head %}{% endblock %}
 </head>
 <body class="app-shell">
@@ -98,5 +97,6 @@
   </main>
   <div id="toast" class="toast hidden" role="status"></div>
   {% block scripts %}{% endblock %}
+  <script src="/static/js/app.js?v=2"></script>
 </body>
 </html>
