@@ -57,6 +57,10 @@ pip install -r requirements.txt
 * **Model 1 (Re-ID):** Папки `models/` и `data/` поместить в корень проекта. (Актуальная best_model.pth и vector_database.pt от 23.05.26)
 * **Model 2 (Segmentation):** Папки `models/` и `data/` поместить в `test_model/`. (Актуальная best_model.pth от 02.04.26)
 
+**4. Работа с проектами**
+Для работы с проектами необходимо добавить базу данных: https://drive.google.com/drive/folders/1LXJdBYZkoEMLGCth_p9ufgCiHTQjMEbz?usp=sharing
+Для этого содержимое папки поместить в data/
+
 ---
 
 ## 🚀 Использование
