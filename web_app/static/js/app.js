@@ -239,6 +239,7 @@
         showToast(err.message, true);
       }
     });
+
   }
 
   /* ---------- search page ---------- */
