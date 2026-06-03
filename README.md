@@ -63,8 +63,9 @@ pip install -r requirements.txt
 
 ### Запуск (из корня newt_reid_project-main)
 ```bash
-uvicorn web_app.main:app --host 0.0.0.0 --port 8000 (либо др.)
+uvicorn web_app.main:app --host 0.0.0.0 --port 8000
 ```
+приложение запустится по ссылке: 127.0.0.1:8000
 
 ### Дополнительные инструменты
 * `train.py` — Скрипт для дообучения модели.
