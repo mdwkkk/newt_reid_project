@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "macros.html" import breadcrumbs, icon %}
+{% block title %}{{ project.name }} — Triton Re-ID{% endblock %}
+{% block breadcrumbs %}
+{{ breadcrumbs([
+  {'label': 'Проекты', 'url': '/'},
+  {'label': project.name, 'url': none}
+]) }}
+{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>{{ project.name }}</h1>
+    <div class="page-header-meta">
+      <span class="badge badge-neutral">Шаблон {{ project.card_template }}</span>
+      <span class="badge badge-accent">{{ project.individual_count }} особей</span>
+    </div>
+  </div>
+</header>
+
+<div class="action-grid">
+  <a href="/projects/{{ project.id }}/search" class="card card-interactive action-card">
+    <div class="action-card-icon">{{ icon('search', 'icon-lg') }}</div>
+    <h2>Поиск по фото</h2>
+    <p>Загрузите снимок и найдите совпадения в базе проекта</p>
+    <span class="action-card-arrow">{{ icon('chevron-right', 'icon') }}</span>
+  </a>
+  <a href="/projects/{{ project.id }}/gallery" class="card card-interactive action-card">
+    <div class="action-card-icon">{{ icon('gallery', 'icon-lg') }}</div>
+    <h2>Галерея</h2>
+    <p>Просмотр всех особей и их фотографий</p>
+    <span class="action-card-arrow">{{ icon('chevron-right', 'icon') }}</span>
+  </a>
+  <a href="/projects/{{ project.id }}/individuals/new" class="card card-interactive action-card action-card-accent">
+    <div class="action-card-icon">{{ icon('plus', 'icon-lg') }}</div>
+    <h2>Добавить особь</h2>
+    <p>Новая карточка и индексация фото для Re-ID</p>
+    <span class="action-card-arrow">{{ icon('chevron-right', 'icon') }}</span>
+  </a>
+</div>
+{% endblock %}

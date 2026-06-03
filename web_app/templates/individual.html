@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "macros.html" import breadcrumbs %}
+{% block title %}{{ individual.individual_id }} — {{ project.name }}{% endblock %}
+{% block breadcrumbs %}
+{{ breadcrumbs([
+  {'label': 'Проекты', 'url': '/'},
+  {'label': project.name, 'url': '/projects/' ~ project.id},
+  {'label': 'Галерея', 'url': '/projects/' ~ project.id ~ '/gallery'},
+  {'label': individual.individual_id, 'url': none}
+]) }}
+{% endblock %}
+{% block content %}
+<header class="page-header specimen-header">
+  <div>
+    <h1 class="specimen-id">{{ individual.individual_id }}</h1>
+    <div class="page-header-meta">
+      <span class="badge badge-neutral">Шаблон {{ project.card_template }}</span>
+      <span class="badge badge-accent">{{ individual.photo_count }} фото</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <button id="btnEdit" type="button" class="btn btn-secondary">Редактировать</button>
+    <button id="btnDelete" type="button" class="btn btn-danger">Удалить</button>
+  </div>
+</header>
+
+<div class="detail-grid">
+  <section class="card panel">
+    <h2 class="panel-title">Фотографии</h2>
+    <div class="photo-grid">
+      {% for ph in individual.photos %}
+      <a href="{{ ph.url }}" target="_blank" rel="noopener">
+        <img src="{{ ph.url }}" alt="" loading="lazy" />
+      </a>
+      {% else %}
+      <p style="grid-column:1/-1;margin:0;font-size:0.875rem;color:var(--text-muted)">Фотографии не загружены</p>
+      {% endfor %}
+    </div>
+    <form id="addPhotosForm" style="margin-top:1.25rem">
+      <label class="label" for="morePhotos">Добавить фото</label>
+      <input id="morePhotos" type="file" accept="image/*" multiple class="input" style="margin-bottom:0.65rem" />
+      <button type="submit" class="btn btn-accent-outline btn-sm">Загрузить и проиндексировать</button>
+    </form>
+  </section>
+
+  <section id="cardView" class="card panel">
+    <h2 class="panel-title">Карточка особи</h2>
+    <dl id="cardFields" class="card-dl"></dl>
+  </section>
+
+  <section id="cardEdit" class="card panel hidden" style="grid-column:1/-1">
+    <h2 class="panel-title">Редактирование</h2>
+    <form id="editForm">
+      <div id="editFields" class="form-grid"></div>
+      <div style="margin-top:1.25rem;display:flex;gap:0.5rem">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" id="btnCancelEdit" class="btn btn-secondary">Отмена</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.PAGE = 'individual';
+  window.PROJECT_ID = '{{ project.id }}';
+  window.INDIVIDUAL_ID = '{{ individual.individual_id }}';
+  window.TEMPLATE_SCHEMA = {{ template_schema | tojson }};
+  window.METADATA = {{ individual.metadata | tojson }};
+  window.ALL_IDS = {{ all_individual_ids | tojson }};
+</script>
+{% endblock %}

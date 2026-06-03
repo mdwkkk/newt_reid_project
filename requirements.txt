@@ -53,3 +53,13 @@ segmentation_models_pytorch
 
 seaborn>=0.13.2
 mlflow>=3.11.1
+
+# Зависимости веб-оболочки. Установка: pip install -r web_app/requirements.txt
+# Запуск (из корня newt_reid_project-main, CWD = корень репо):
+# uvicorn web_app.main:app --host 0.0.0.0 --port 8000
+# 127.0.0.1:8000
+
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+jinja2>=3.1.0

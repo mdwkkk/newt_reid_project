@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "macros.html" import breadcrumbs, project_tabs %}
+{% block title %}{% if mode == 'create' %}Новая особь{% else %}Редактирование{% endif %} — {{ project.name }}{% endblock %}
+{% block breadcrumbs %}
+{{ breadcrumbs([
+  {'label': 'Проекты', 'url': '/'},
+  {'label': project.name, 'url': '/projects/' ~ project.id},
+  {'label': 'Новая особь' if mode == 'create' else individual.individual_id, 'url': none}
+]) }}
+{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>{% if mode == 'create' %}Добавить особь{% else %}Редактировать карточку{% endif %}</h1>
+    <p class="page-header-desc">Шаблон {{ project.card_template }}</p>
+  </div>
+</header>
+
+{% if mode == 'create' %}
+{{ project_tabs(project, 'new') }}
+{% endif %}
+
+<form id="individualForm" class="form-stack">
+  <section class="card panel">
+    <h2 class="panel-title">Данные карточки</h2>
+    <div id="metadataFields" class="form-grid"></div>
+  </section>
+
+  {% if mode == 'create' %}
+  <section class="card panel">
+    <h2 class="panel-title">Фотографии для Re-ID</h2>
+    <p class="card-desc" style="margin:-0.5rem 0 1rem">Загрузите одно или несколько фото брюшной стороны. Изображения будут проиндексированы автоматически.</p>
+    <input id="photoFiles" type="file" accept="image/*" multiple class="input" />
+  </section>
+  {% endif %}
+
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <button type="submit" class="btn btn-primary">{% if mode == 'create' %}Создать особь{% else %}Сохранить{% endif %}</button>
+    <a href="{% if individual %}/projects/{{ project.id }}/individuals/{{ individual.individual_id }}{% else %}/projects/{{ project.id }}/gallery{% endif %}" class="btn btn-secondary">Отмена</a>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.PAGE = 'individual_form';
+  window.PROJECT_ID = '{{ project.id }}';
+  window.MODE = '{{ mode }}';
+  window.TEMPLATE_SCHEMA = {{ template_schema | tojson }};
+  {% if individual %}
+  window.INITIAL_METADATA = {{ individual.metadata | tojson }};
+  window.INDIVIDUAL_ID = '{{ individual.individual_id }}';
+  {% else %}
+  window.INITIAL_METADATA = {};
+  {% endif %}
+</script>
+{% endblock %}

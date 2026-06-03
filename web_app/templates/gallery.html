@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "macros.html" import breadcrumbs, project_tabs %}
+{% block title %}Галерея — {{ project.name }}{% endblock %}
+{% block breadcrumbs %}
+{{ breadcrumbs([
+  {'label': 'Проекты', 'url': '/'},
+  {'label': project.name, 'url': '/projects/' ~ project.id},
+  {'label': 'Галерея', 'url': none}
+]) }}
+{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Галерея особей</h1>
+    <p class="page-header-desc">{{ individuals|length }} {% if individuals|length == 1 %}запись{% elif individuals|length >= 2 and individuals|length <= 4 %}записи{% else %}записей{% endif %} в проекте</p>
+  </div>
+  <a href="/projects/{{ project.id }}/individuals/new" class="btn btn-primary">Добавить особь</a>
+</header>
+
+{{ project_tabs(project, 'gallery') }}
+
+<div class="gallery-grid">
+  {% for ind in individuals %}
+  <a href="/projects/{{ project.id }}/individuals/{{ ind.individual_id }}" class="card card-interactive gallery-card">
+    <div class="gallery-card-media">
+      {% if ind.photo_count > 0 %}
+      <img src="{{ ind.preview_url }}" alt="ID {{ ind.individual_id }}" loading="lazy" />
+      {% else %}
+      <span class="gallery-card-placeholder">Нет фото</span>
+      {% endif %}
+    </div>
+    <div class="gallery-card-footer">
+      <p class="gallery-card-id">{{ ind.individual_id }}</p>
+      <p class="gallery-card-meta">{{ ind.photo_count }} фото</p>
+    </div>
+  </a>
+  {% else %}
+  <div class="empty-state">
+    <p>В проекте пока нет особей.</p>
+    <a href="/projects/{{ project.id }}/individuals/new" class="btn btn-primary">Добавить первую особь</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

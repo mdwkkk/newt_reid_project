@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "macros.html" import breadcrumbs, project_tabs, icon %}
+{% block title %}Поиск — {{ project.name }}{% endblock %}
+{% block breadcrumbs %}
+{{ breadcrumbs([
+  {'label': 'Проекты', 'url': '/'},
+  {'label': project.name, 'url': '/projects/' ~ project.id},
+  {'label': 'Поиск', 'url': none}
+]) }}
+{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Поиск по фото</h1>
+    <p class="page-header-desc">Сегментация и сопоставление с базой проекта «{{ project.name }}»</p>
+  </div>
+</header>
+
+{{ project_tabs(project, 'search') }}
+
+<section class="card panel">
+  <div class="upload-toolbar">
+    <input id="file" type="file" accept="image/*" class="hidden" />
+    <button id="btnPick" type="button" class="btn btn-secondary">Выбрать файл</button>
+    <button id="btnRun" type="button" disabled class="btn btn-primary">Выполнить поиск</button>
+    <div id="spinner" class="spinner-row">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Обработка изображения…</span>
+    </div>
+  </div>
+  <div id="uploadZone" class="upload-zone">
+    <img id="preview" class="hidden" alt="Предпросмотр" />
+    <p id="previewEmpty" class="upload-zone-empty">Перетащите фото или нажмите «Выбрать файл»</p>
+  </div>
+</section>
+
+<div id="emptyProject" class="alert alert-warning hidden" style="margin-top:1.25rem">
+  <p id="emptyProjectMsg" style="margin:0"></p>
+  <div class="alert-actions">
+    <a id="emptyProjectLink" href="/projects/{{ project.id }}/individuals/new" class="btn btn-primary btn-sm">Добавить особь</a>
+  </div>
+</div>
+
+<div id="alert" class="alert alert-error hidden" style="margin-top:1.25rem" role="alert"></div>
+
+<div id="lowConfidenceBanner" class="alert alert-info hidden" style="margin-top:1.25rem">
+  <p class="alert-info-title">Похоже, такого тритона нет в базе</p>
+  <p class="card-desc" style="margin:0">Коэффициент уверенности ниже 0.7. Добавить особь как новую?</p>
+  <div class="alert-actions">
+    <a href="/projects/{{ project.id }}/individuals/new" class="btn btn-primary btn-sm">Добавить особь</a>
+    <button id="btnDismissLowConf" type="button" class="btn btn-secondary btn-sm">Закрыть</button>
+  </div>
+</div>
+<button id="btnShowLowConfHint" type="button" class="hint-restore hidden">
+  Показать предложение о добавлении новой особи
+</button>
+
+<section id="results" class="hidden" style="margin-top:2rem">
+  <div class="card panel" style="margin-bottom:1.25rem">
+    <h2 class="panel-title">Каноническое изображение</h2>
+    <img id="unwrapped" style="max-height:24rem;width:100%;object-fit:contain" alt="Результат сегментации" />
+    <p id="meta" class="results-meta"></p>
+  </div>
+  <div class="card panel">
+    <h2 class="panel-title">Топ совпадений</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Фото</th>
+            <th>ID особи</th>
+            <th>Схожесть</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div id="compareModal" class="modal compare-modal hidden">
+  <div class="modal-backdrop" id="compareClose"></div>
+  <div class="compare-grid">
+    <div class="compare-pane">
+      <h3>Запрос</h3>
+      <img id="compareQueryImg" alt="" />
+    </div>
+    <div class="compare-pane">
+      <h3 id="compareGalleryTitle">Из базы</h3>
+      <img id="compareGalleryImg" alt="" />
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.PAGE = 'search';
+  window.PROJECT_ID = '{{ project.id }}';
+</script>
+{% endblock %}

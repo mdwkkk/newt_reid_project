@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "macros.html" import breadcrumbs %}
+{% block title %}Проекты — Triton Re-ID{% endblock %}
+{% block breadcrumbs %}
+{{ breadcrumbs([{'label': 'Проекты', 'url': none}]) }}
+{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Проекты</h1>
+    <p class="page-header-desc">Отдельные базы данных особей и шаблоны карточек для каждого исследования</p>
+  </div>
+  <button id="btnOpenCreate" type="button" class="btn btn-primary">
+    Создать проект
+  </button>
+</header>
+
+<div id="projectsGrid" class="projects-grid">
+  {% for p in projects %}
+  <a href="/projects/{{ p.id }}" class="card card-interactive">
+    <div class="card-body">
+      <h2 class="card-title">{{ p.name }}</h2>
+      <p class="card-desc">Шаблон карточки {{ p.card_template }}</p>
+      <p class="card-stat">Записей в базе: <strong>{{ p.individual_count }}</strong></p>
+    </div>
+  </a>
+  {% else %}
+  <div class="empty-state">
+    <p>Нет проектов. Создайте первый или дождитесь импорта демонстрационной базы при запуске.</p>
+    <button type="button" id="btnOpenCreateEmpty" class="btn btn-primary">Создать проект</button>
+  </div>
+  {% endfor %}
+</div>
+
+<div id="createModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="createModalTitle">
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-panel">
+    <h2 id="createModalTitle" class="modal-title">Новый проект</h2>
+    <form id="createForm" class="form-stack">
+      <div>
+        <label class="label" for="projectName">Название</label>
+        <input id="projectName" name="name" type="text" required class="input" placeholder="Например: Водоём №3" />
+      </div>
+      <div>
+        <label class="label" for="cardTemplate">Шаблон карточки</label>
+        <select id="cardTemplate" name="card_template" required class="input"></select>
+        <p id="templateDesc" class="card-desc" style="margin-top:0.5rem"></p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal>Отмена</button>
+        <button type="submit" class="btn btn-primary">Создать</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.PAGE = 'projects';</script>
+{% endblock %}

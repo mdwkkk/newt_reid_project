@@ -12,3 +12,11 @@ temp_*.jpg
 *.ckpt
 data/
 models/
+debug_input_*.jpg
+.env
+.env.*
+mlruns/
+*.db
+.DS_Store
+Thumbs.db
+web_app/Untitled

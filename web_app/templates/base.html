@@ -1,0 +1,102 @@
+{% from "macros.html" import icon %}
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Triton Re-ID{% endblock %}</title>
+  <script>
+    (function () {
+      var key = 'triton-reid-theme';
+      var stored = localStorage.getItem(key);
+      var theme = stored === 'light' || stored === 'dark' ? stored : null;
+      if (!theme) {
+        theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/css/app.css" />
+  <script src="/static/js/app.js" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="app-shell">
+  <div id="navOverlay" class="nav-overlay hidden" aria-hidden="true"></div>
+
+  <aside id="navDrawer" class="nav-drawer" aria-hidden="true" aria-label="Навигация">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-title">Навигация</span>
+      <button id="btnNavClose" type="button" class="nav-drawer-close" aria-label="Закрыть меню">
+        {{ icon('close', 'icon') }}
+      </button>
+    </div>
+    <nav class="nav-drawer-body">
+      <a href="/" class="nav-drawer-item {% if active == 'projects' %}nav-drawer-item-active{% endif %}">
+        {{ icon('projects', 'icon') }}
+        Все проекты
+      </a>
+
+      {% if project is defined and project %}
+      <div class="nav-drawer-section">
+        <p class="nav-drawer-section-title">{{ project.name }}</p>
+        <p class="nav-drawer-section-meta">Шаблон {{ project.card_template }}</p>
+      </div>
+      <a href="/projects/{{ project.id }}"
+        class="nav-drawer-item {% if active == 'project' %}nav-drawer-item-active{% endif %}">
+        {{ icon('home', 'icon') }}
+        Обзор проекта
+      </a>
+      <a href="/projects/{{ project.id }}/search"
+        class="nav-drawer-item {% if active == 'search' %}nav-drawer-item-active{% endif %}">
+        {{ icon('search', 'icon') }}
+        Поиск по фото
+      </a>
+      <a href="/projects/{{ project.id }}/gallery"
+        class="nav-drawer-item {% if active == 'gallery' %}nav-drawer-item-active{% endif %}">
+        {{ icon('gallery', 'icon') }}
+        Галерея особей
+      </a>
+      <a href="/projects/{{ project.id }}/individuals/new"
+        class="nav-drawer-item {% if active == 'new' %}nav-drawer-item-active{% endif %}">
+        {{ icon('plus', 'icon') }}
+        Добавить особь
+      </a>
+      {% if individual is defined and individual %}
+      <a href="/projects/{{ project.id }}/individuals/{{ individual.individual_id }}"
+        class="nav-drawer-item {% if active == 'individual' %}nav-drawer-item-active{% endif %}">
+        {{ icon('specimen', 'icon') }}
+        {{ individual.individual_id }}
+      </a>
+      {% endif %}
+      {% endif %}
+    </nav>
+  </aside>
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <button id="btnNavMenu" type="button" class="nav-menu-btn" aria-label="Открыть меню" aria-expanded="false" aria-controls="navDrawer">
+        {{ icon('menu', 'icon') }}
+        <span class="nav-menu-btn-label">Меню</span>
+      </button>
+      <a href="{% if project is defined and project %}/projects/{{ project.id }}{% else %}/{% endif %}" class="brand">
+        {{ icon('logo', 'icon icon-lg brand-logo') }}
+        <span class="brand-text">
+          <span class="brand-title">{% if project is defined and project %}{{ project.name }}{% else %}Triton Re-ID{% endif %}</span>
+          <span class="brand-subtitle">{% if project is defined and project %}Идентификация особей{% else %}Система Re-ID{% endif %}</span>
+        </span>
+      </a>
+      <button id="btnThemeToggle" type="button" class="theme-toggle" aria-label="Переключить на светлую тему" title="Светлая тема">
+        <span class="theme-toggle-icon theme-toggle-icon-sun">{{ icon('sun', 'icon') }}</span>
+        <span class="theme-toggle-icon theme-toggle-icon-moon">{{ icon('moon', 'icon') }}</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    {% block breadcrumbs %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
+  <div id="toast" class="toast hidden" role="status"></div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
